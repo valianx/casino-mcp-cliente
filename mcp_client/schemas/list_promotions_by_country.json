@@ -1,0 +1,19 @@
+{
+  "description": "Returns a paginated list of promotions available for a given country (ISO-2 code).",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "country": { "type": "string", "description": "ISO-2 country code, e.g., CL" },
+      "page": { "type": "integer", "default": 1, "minimum": 1 },
+      "limit": { "type": "integer", "default": 50, "minimum": 1, "maximum": 200 },
+      "include": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Optional fields to include"
+      },
+      "sort": { "type": "string", "description": "Sort by field, e.g., startDate:asc" }
+    },
+    "required": ["country"],
+    "additionalProperties": false
+  }
+}
