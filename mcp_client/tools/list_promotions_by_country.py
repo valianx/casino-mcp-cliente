@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple, Optional
 
 from pydantic import BaseModel, field_validator
 
-from ..logging import timed, json_log
+from ..utils import timed, json_log
 
 import os
 import httpx

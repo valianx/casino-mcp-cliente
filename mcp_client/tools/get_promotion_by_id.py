@@ -4,8 +4,8 @@ from typing import Any, Dict
 
 from pydantic import BaseModel
 
-from ..logging import timed
-from ..logging import json_log
+from ..utils import timed
+from ..utils import json_log
 
 import os
 import httpx
