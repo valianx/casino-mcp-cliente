@@ -20,7 +20,7 @@ class GetPromotionByIdParams(BaseModel):
 
 
 def _call_remote_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    base = os.getenv("MCP_SERVER", "http://localhost:8000").rstrip("/")
+    base = os.getenv("MCP_SERVER_URL", "http://localhost:8000").rstrip("/")
     endpoints = [
         f"{base}/tools/{tool_name}",
         f"{base}/api/tools/{tool_name}",
@@ -48,39 +48,6 @@ def _call_remote_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
     raise RuntimeError(f"Remote tool {tool_name} not reachable at {base}")
 
 
-def _map_mock_to_strapi(item) -> Dict[str, Any]:
-    # Map our simple Promotion dataclass to a Strapi-like attributes payload
-    return {
-        "id": item.id,
-        "attributes": {
-            "title": item.title,
-            "subtitle": None,
-            "content": item.description,
-            "content_rich": f"<p>{item.description}</p>",
-            "showInHome": False,
-            "showInFooter": False,
-            "order": None,
-            "bigPromotion": False,
-            "createdAt": None,
-            "updatedAt": None,
-            "publishedAt": None,
-            "isHtml": None,
-            "slug": item.slug,
-            "imgHomeDesktop": None,
-            "imgHomeMobile": None,
-            "imgCardDesktop": None,
-            "imgCardMobile": None,
-            "imgPromotionDesktop": None,
-            "imgPromotionMobile": None,
-            "imgBigPromotion": None,
-            # keep legacy fields too
-            "startDate": item.startDate,
-            "endDate": item.endDate,
-            "country": item.country,
-        },
-    }
-
-
 def _find_data(obj: Any):
     """Recursively search for a 'data' key in nested dict/list responses."""
     if isinstance(obj, dict):
@@ -95,36 +62,6 @@ def _find_data(obj: Any):
             found = _find_data(item)
             if found is not None:
                 return found
-    return None
-
-
-def _fetch_from_strapi(promotion_id: int) -> Dict[str, Any] | None:
-    """
-    Try to fetch full promotion record directly from Strapi REST API if configured.
-    Uses STRAPI_BASE_URL and STRAPI_TOKEN environment variables when available.
-    Returns a Strapi-like {'data': {...}} object or None on failure.
-    """
-    strapi_base = os.getenv("STRAPI_BASE_URL")
-    if not strapi_base:
-        return None
-    strapi_base = strapi_base.rstrip("/")
-    token = os.getenv("STRAPI_TOKEN")
-    url = f"{strapi_base}/promotions/{promotion_id}?populate=*"
-    headers = {"Accept": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    try:
-        resp = _client.get(url, headers=headers, timeout=5.0)
-        if resp.status_code == 200:
-            try:
-                j = resp.json()
-                # Strapi returns {"data": {...}} normally
-                if isinstance(j, dict) and j.get("data"):
-                    return j
-            except Exception:
-                return None
-    except Exception:
-        return None
     return None
 
 
@@ -162,21 +99,10 @@ def get_promotion_by_id(params: Dict[str, Any]) -> Dict[str, Any]:
                 if isinstance(data, dict) and data.get("attributes"):
                     returned_id = data.get("id")
                     if returned_id is None or int(returned_id) != promotion_id:
-                        # Attempt to fetch full Strapi record by ID as fallback
-                        strapi = _fetch_from_strapi(promotion_id)
-                        if strapi:
-                            json_log("tool.strapi_fallback", tool="get_promotion_by_id", id=promotion_id)
-                            return strapi
-                        # otherwise proceed but signal mismatch by returning no match
+                        # Signal mismatch by returning no match
                         json_log("tool.mismatch", tool="get_promotion_by_id", requested=promotion_id, returned=returned_id)
                         return {"data": None, "message": "No se encontró una promoción con el ID solicitado."}
                     # IDs match
-                    attrs = data.get("attributes", {})
-                    if not attrs.get("content") or not attrs.get("content_rich"):
-                        strapi = _fetch_from_strapi(promotion_id)
-                        if strapi:
-                            json_log("tool.strapi_fallback", tool="get_promotion_by_id", id=promotion_id)
-                            return strapi
                     return {"data": data}
                 # If data is a list, search for matching id
                 if isinstance(data, list):
@@ -190,13 +116,7 @@ def get_promotion_by_id(params: Dict[str, Any]) -> Dict[str, Any]:
                     # not found in list
                     json_log("tool.not_found_in_list", tool="get_promotion_by_id", id=promotion_id)
                     return {"data": None, "message": "No se encontró una promoción con el ID solicitado."}
-                # If attributes are present but missing detailed content, try Strapi directly
-                attrs = result["data"].get("attributes", {})
-                if not attrs.get("content") or not attrs.get("content_rich"):
-                    strapi = _fetch_from_strapi(promotion_id)
-                    if strapi:
-                        json_log("tool.strapi_fallback", tool="get_promotion_by_id", id=promotion_id)
-                        return strapi
+                # Return the result as-is
                 return result
             # If remote returns a plain object with attributes nested under 'data.attributes' or similar, normalize
             if isinstance(result, dict) and result.get("data"):

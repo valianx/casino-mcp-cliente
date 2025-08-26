@@ -113,7 +113,7 @@ def _extract_promotions_list(obj: Any) -> Optional[List[Dict[str, Any]]]:
 
 
 def _call_remote_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    base = os.getenv("MCP_SERVER", "http://localhost:8000").rstrip("/")
+    base = os.getenv("MCP_SERVER_URL", "http://localhost:8000").rstrip("/")
     endpoints = [
         f"{base}/tools/{tool_name}",
         f"{base}/api/tools/{tool_name}",
@@ -138,53 +138,6 @@ def _call_remote_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
                 json_log("tool.remote_error", tool=tool_name, url=url, error=f"invalid_json:{e}")
                 continue
     raise RuntimeError(f"Remote tool {tool_name} not reachable at {base}")
-
-
-def _fetch_from_strapi_list(country_iso2: str, page: int, limit: int) -> Dict[str, Any] | None:
-    """
-    Attempt to fetch promotions list directly from Strapi if configured via STRAPI_BASE_URL / STRAPI_TOKEN.
-    Tries several common filter shapes to match country fields.
-    Returns a normalized dict with 'data' list if found, else None.
-    """
-    base = os.getenv("STRAPI_BASE_URL")
-    if not base:
-        return None
-    base = base.rstrip("/")
-    token = os.getenv("STRAPI_TOKEN")
-    headers = {"Accept": "application/json"}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-
-    # Candidate query patterns (Strapi v4):
-    candidates = [
-        f"{base}/promotions?populate=*&filters[country][$eq]={country_iso2}&pagination[page]={page}&pagination[pageSize]={limit}",
-        f"{base}/promotions?populate=*&filters[country][code][$eq]={country_iso2}&pagination[page]={page}&pagination[pageSize]={limit}",
-        f"{base}/promotions?populate=*&filters[country_iso2][$eq]={country_iso2}&pagination[page]={page}&pagination[pageSize]={limit}",
-        f"{base}/promotions?populate=*&filters[country][$containsi]={country_iso2}&pagination[page]={page}&pagination[pageSize]={limit}",
-    ]
-    for url in candidates:
-        try:
-            resp = _client.get(url, headers=headers)
-        except Exception as e:
-            json_log("tool.strapi_error", tool="list_promotions_by_country", url=url, error=str(e))
-            continue
-        if resp.status_code == 200:
-            try:
-                j = resp.json()
-            except Exception:
-                continue
-            data = j.get("data") if isinstance(j, dict) else None
-            if isinstance(data, list) and len(data) >= 0:
-                json_log("tool.strapi_success", tool="list_promotions_by_country", url=url, count=len(data))
-                # pass through including pagination/meta if present
-                out: Dict[str, Any] = {"data": data}
-                if isinstance(j, dict):
-                    if "meta" in j:
-                        out["meta"] = j["meta"]
-                return out
-        else:
-            json_log("tool.strapi_status", tool="list_promotions_by_country", url=url, status_code=resp.status_code)
-    return None
 
 
 def list_promotions_by_country(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -237,12 +190,7 @@ def list_promotions_by_country(params: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             json_log("tool.remote_exception", tool="list_promotions_by_country", error=str(e))
 
-        # Remote returned empty or failed: try Strapi fallback if configured
-        fallback = _fetch_from_strapi_list(p.country, p.page, p.limit)
-        if fallback is not None:
-            return fallback
-
-        # No data from remote nor Strapi
+        # No data from remote: return empty result
         return {
             "data": [],
             "pagination": {"page": p.page, "limit": p.limit, "total": 0, "pages": 0},

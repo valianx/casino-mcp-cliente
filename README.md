@@ -1,61 +1,94 @@
 # MCP Client for Casino Promotions
 
-This project implements an MCP client that connects to an Ollama-hosted `gpt-oss:20b` model and exposes two tools for answering players' questions about casino promotions.
+This project implements an ADK-powered agent that uses OpenAI's `gpt-5-nano` model and exposes MCP tools for answering players' questions about casino promotions.
 
 - Formal tone, promotions-only scope.
 - All answers must be grounded strictly on tool outputs.
 
 ## Requirements
 - Python 3.10+
-- Ollama running locally with the `gpt-oss:20b` model pulled.
+- OpenAI API key
+- MCP Server running on localhost:8000 (for promotion tools)
 
 ## Environment
-Create a `.env` file or set environment variables:
+Create a `.env` file based on `.env.example`:
 
-- OLLAMA_HOST=http://localhost:11434
-- MODEL=gpt-oss:20b
-- STRAPI_TOKEN=... (optional if your tools call remote APIs; not used in this offline sample)
- - OLLAMA_API_BASE=http://localhost:11434  # Requerido por ADK/LiteLLM (ollama_chat)
+```env
+# OpenAI Configuration
+MODEL=gpt-5-nano
+OPENAI_API_KEY=your-openai-api-key-here
+# Optional: Custom API endpoint
+OPENAI_API_BASE=https://api.openai.com/v1
 
-## Run (with uv)
-Use uv for fast, reproducible environments on Windows PowerShell:
-
-```powershell
-# Install uv if needed
-if (-not (Get-Command uv -ErrorAction SilentlyContinue)) { iwr https://astral.sh/uv/install.ps1 -UseBasicParsing | iex }
-
-# Create virtual env and install deps
-uv venv
-uv pip install -e .[dev]
-
-# Run tests (optional)
-uv run -m pytest
-
-# Start the MCP client REPL
-uv run -m mcp_client.main
+# MCP Server Configuration
+MCP_SERVER_URL=http://localhost:8000
 ```
 
-## Tests
+## Installation & Setup
+
+1. **Clone and setup virtual environment:**
 ```powershell
-uv run -m pytest
+# Create virtual environment
+python -m venv .venv
+
+# Activate virtual environment  
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -e .[dev]
 ```
 
-## Ejecutar con ADK (ollama_chat)
-ADK puede cargar el agente desde `jgl_mcp_client/root_agent.py` (símbolo `root_agent`). Asegúrate de:
-
-- Tener Ollama en ejecución y el modelo con soporte de tools.
-- Tener `OLLAMA_API_BASE` apuntando a tu servidor Ollama.
-
+2. **Install ADK (Agent Development Kit):**
 ```powershell
-# Opcional: activar venv si usas uno externo
-$venv = "$env:USERPROFILE\.venvs\jgl_mcp_client"
-& "$venv\Scripts\python.exe" -m pip show google-adk | Out-Null; if ($LASTEXITCODE -ne 0) { uv pip install -p "$venv\Scripts\python.exe" google-adk litellm }
-
-# Ejecutar el servidor web de ADK desde el directorio padre que contiene el paquete
-$Env:OLLAMA_API_BASE = "http://localhost:11434"
-adk web jgl_mcp_client
+pip install google-adk litellm
 ```
+
+3. **Configure environment:**
+   - Copy `.env.example` to `.env`
+   - Add your OpenAI API key
+
+## Running the Agent
+
+Start the ADK web server:
+```powershell
+.\.venv\Scripts\Activate.ps1; .\.venv\Scripts\adk.exe web jgl_mcp_client --port 8001
+```
+
+Then open your browser to: `http://localhost:8001`
+
+## Testing
+```powershell
+# Activate virtual environment
+.\.venv\Scripts\Activate.ps1
+
+# Run tests
+pytest
+```
+
+## Project Structure
+```
+jgl_mcp_client/
+├── jgl_mcp_client/           # ADK agent definition
+│   ├── root_agent.py         # Main agent with OpenAI integration
+│   └── agent/__init__.py     # ADK export point
+├── mcp_client/               # MCP tools
+│   ├── tools/                # Promotion tools
+│   │   ├── list_promotions_by_country.py
+│   │   └── get_promotion_by_id.py
+│   └── schemas/              # JSON schemas
+├── .env.example              # Environment template
+└── pyproject.toml           # Project dependencies
+```
+
+## Features
+- **ADK Integration**: Uses Google's Agent Development Kit for web UI
+- **OpenAI GPT-5-nano**: Powered by latest OpenAI model via LiteLLM
+- **MCP Tools**: Structured tools for casino promotion queries
+- **Formal Responses**: Agent maintains professional tone
+- **Scoped Functionality**: Only answers promotion-related questions
 
 ## Notes
-- This sample ships with in-memory mock data to demonstrate tool behavior without external APIs.
-- Replace the mock data layer with real integrations as needed.
+- The agent connects to remote MCP tools running on `localhost:8000`
+- All promotion data comes from external MCP server endpoints
+- Agent refuses to answer non-promotion related questions
+- Responses maintain a formal, professional tone suitable for casino players
