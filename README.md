@@ -108,7 +108,7 @@ pip install google-adk litellm
 
 Start the ADK web server:
 ```powershell
-.\.venv\Scripts\Activate.ps1; .\.venv\Scripts\adk.exe web jgl_mcp_client --port 8001
+.\.venv\Scripts\Activate.ps1; .\.venv\Scripts\adk.exe web casino_agent --port 8001
 ```
 
 Then open your browser to: `http://localhost:8001`
@@ -172,7 +172,7 @@ jgl_mcp_client/
 1. Clone this repository
 2. Copy `.env.example` to `.env` and add your OpenAI API key
 3. Run the setup commands above
-4. Start with: `.\.venv\Scripts\Activate.ps1; .\.venv\Scripts\adk.exe web jgl_mcp_client --port 8001`
+4. Start with: `.\.venv\Scripts\Activate.ps1; .\.venv\Scripts\adk.exe web casino_agent --port 8001`
 5. Open `http://localhost:8001` in your browser
 
 ## 🔧 **Troubleshooting**

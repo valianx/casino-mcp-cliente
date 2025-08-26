@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple, Optional
 
 from pydantic import BaseModel, field_validator
 
-from ..utils import timed, json_log
+from ..core import timed, json_log
 
 import os
 import httpx
@@ -121,21 +121,21 @@ def _call_remote_tool(tool_name: str, params: Dict[str, Any]) -> Dict[str, Any]:
         f"{base}/api/tool/{tool_name}",
     ]
     headers = {"Content-Type": "application/json"}
-    json_log("tool.remote_attempt", tool=tool_name, endpoints=endpoints)
+    json_log("info", "Tool remote attempt", tool=tool_name, endpoints=endpoints)
     for url in endpoints:
         try:
             resp = _client.post(url, json={"params": params}, headers=headers)
         except Exception as e:
-            json_log("tool.remote_error", tool=tool_name, url=url, error=str(e))
+            json_log("error", "Tool remote error", tool=tool_name, url=url, error=str(e))
             continue
-        json_log("tool.remote_status", tool=tool_name, url=url, status_code=resp.status_code)
+        json_log("info", "Tool remote status", tool=tool_name, url=url, status_code=resp.status_code)
         if resp.status_code == 200:
             try:
                 j = resp.json()
-                json_log("tool.remote_success", tool=tool_name, url=url)
+                json_log("info", "Tool remote success", tool=tool_name, url=url)
                 return j
             except Exception as e:
-                json_log("tool.remote_error", tool=tool_name, url=url, error=f"invalid_json:{e}")
+                json_log("error", "Tool remote error", tool=tool_name, url=url, error=f"invalid_json:{e}")
                 continue
     raise RuntimeError(f"Remote tool {tool_name} not reachable at {base}")
 
@@ -164,7 +164,7 @@ def list_promotions_by_country(params: Dict[str, Any]) -> Dict[str, Any]:
                 "iso2": country,
                 "iso2_country": country,
             })
-            json_log("tool.remote_request", tool="list_promotions_by_country", payload=params_for_remote)
+            json_log("info", "Tool remote request", tool="list_promotions_by_country", payload=params_for_remote)
             result = _call_remote_tool("list_promotions_by_country", params_for_remote)
             # If remote returns Strapi-like list, pass through
             if isinstance(result, dict) and result.get("data") and isinstance(result["data"], list):
@@ -188,7 +188,7 @@ def list_promotions_by_country(params: Dict[str, Any]) -> Dict[str, Any]:
             if nested is not None:
                 return {"data": nested}
         except Exception as e:
-            json_log("tool.remote_exception", tool="list_promotions_by_country", error=str(e))
+            json_log("error", "Tool remote exception", tool="list_promotions_by_country", error=str(e))
 
         # No data from remote: return empty result
         return {

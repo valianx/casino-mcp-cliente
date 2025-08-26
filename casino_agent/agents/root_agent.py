@@ -13,14 +13,14 @@ from google.adk.tools import FunctionTool
 from dotenv import load_dotenv
 load_dotenv()
 
-# Make sibling package `mcp_client` importable even if ADK runs from another CWD
-_project_root = Path(__file__).resolve().parents[1]
+# Make sibling package `casino_agent` importable even if ADK runs from another CWD
+_project_root = Path(__file__).resolve().parents[2]
 if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 # Reuse internal tool implementations (absolute import from sibling package)
-from mcp_client.tools.get_promotion_by_id import get_promotion_by_id as _get_by_id
-from mcp_client.tools.list_promotions_by_country import (
+from casino_agent.tools.get_promotion_by_id import get_promotion_by_id as _get_by_id
+from casino_agent.tools.list_promotions_by_country import (
     list_promotions_by_country as _list_by_country,
 )
 

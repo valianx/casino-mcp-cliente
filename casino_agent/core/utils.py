@@ -24,12 +24,13 @@ def json_log(level: str, message: str, **kwargs) -> None:
     print(json.dumps(log_entry))
 
 @contextmanager
-def timed(operation_name: str):
+def timed(operation_name: str, **kwargs):
     """
     Context manager to time operations and log the duration.
     
     Args:
         operation_name: Name of the operation being timed
+        **kwargs: Additional context to include in the log
     """
     start_time = time.time()
     try:
@@ -38,4 +39,5 @@ def timed(operation_name: str):
         duration_ms = (time.time() - start_time) * 1000
         json_log("info", f"Operation completed", 
                 operation=operation_name, 
-                duration_ms=round(duration_ms, 2))
+                duration_ms=round(duration_ms, 2),
+                **kwargs)
